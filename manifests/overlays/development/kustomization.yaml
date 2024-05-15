@@ -18,5 +18,5 @@ secretGenerator:
       - config.php=serverconfig/config.php
 images:
   - name: moodle-sample
-    newName: us-central1-docker.pkg.dev/dev-moodle-361614/moodle-repo/moodle
-    newTag: v2
+    newName: jonhpe/moodle
+    newTag: v4
