@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: moodle
+  name: moodle
+  labels:
+    app: moodle
+    tier: frontend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: moodle
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: moodle
+        tier: frontend
+    spec:
+      containers:
+        - image: moodle-sample:latest
+          imagePullPolicy: Always
+          name: php-fpm
+          volumeMounts:
+            - name: web-root
+              mountPath: /var/www/html
+            - name: config-php
+              mountPath: /var/www/html/config.php
+              subPath: config.php
+            - name: php-ini
+              mountPath: /usr/local/etc/php/php.ini
+              subPath: php.ini
+            - name: www-conf
+              mountPath: /usr/local/etc/php-fpm.d/www.conf
+              subPath: www.conf
+            - name: moodledata
+              mountPath: /var/moodledata
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - "/bin/sh"
+                  - "-c"
+                  - |
+                    cp -rp /app/. /var/www/html
+        - image: nginx:stable-alpine
+          name: nginx-sidecar
+          ports:
+            - name: web
+              containerPort: 80
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /etc/nginx/conf.d
+              name: nginx-conf
+            - name: web-root
+              mountPath: /var/www/html
+              readOnly: true
+      volumes:
+        - name: nginx-conf
+          configMap:
+            name: nginx-config
+            items:
+              - key: default.conf
+                path: default.conf
+        - name: web-root
+          emptyDir: {}
+        - name: config-php
+          secret:
+            secretName: config-php
+            defaultMode: 0755
+            items:
+              - key: config.php
+                path: config.php
+        - name: php-ini
+          configMap:
+            name: php-ini
+            items:
+              - key: php.ini
+                path: php.ini
+        - name: www-conf
+          configMap:
+            name: www-conf
+            items:
+              - key: www.conf
+                path: www.conf
+        - name: moodledata
+          persistentVolumeClaim:
+            claimName: fileserver-claim
+            readOnly: false
